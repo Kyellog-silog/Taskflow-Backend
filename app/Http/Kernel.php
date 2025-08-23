@@ -13,8 +13,6 @@ protected $middlewareGroups = [
         \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         'throttle:api',
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        \App\Http\Middleware\Cors::class,
-    // Add conditional caching for idempotent responses (ETag/If-None-Match)
-    \App\Http\Middleware\ETagMiddleware::class,
+        \App\Http\Middleware\ETagMiddleware::class, // HTTP caching for better performance
     ],
 ];

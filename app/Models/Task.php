@@ -47,8 +47,7 @@ class Task extends Model
      *
      * @var array
      */
-    // Remove automatic eager loading - load explicitly when needed
-    // protected $with = ['assignee', 'createdBy'];
+    // Eager loading disabled for performance optimization - load explicitly when needed
 
     /**
      * The accessors to append to the model's array form.

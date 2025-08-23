@@ -113,8 +113,7 @@ class TaskComment extends Model
      */
     public function getFormattedContentAttribute(): string
     {
-        // Simple formatting - replace newlines with <br> tags
-        // You could implement more advanced formatting like Markdown here
+        // Format content with basic HTML conversion for display
         return nl2br(htmlspecialchars($this->content));
     }
 

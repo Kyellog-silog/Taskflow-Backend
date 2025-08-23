@@ -108,18 +108,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile/achievements', [ProfileController::class, 'achievements']);
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
 
-    // File upload routes (for future implementation)
+    // File attachment routes
     Route::post('/tasks/{task}/attachments', function() {
         return response()->json(['message' => 'File upload not implemented yet']);
     });
 });
 
-// Email verification (needs to be outside auth:sanctum middleware)
+// Email verification endpoint
 Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\Auth\VerifyEmailController::class, '__invoke'])
     ->middleware(['auth:sanctum', 'signed', 'throttle:6,1'])
     ->name('verification.verify');
 
-// Health check
+// Application health check
 Route::get('/health', function () {
     return response()->json([
         'status' => 'OK',
@@ -129,7 +129,7 @@ Route::get('/health', function () {
     ]);
 });
 
-// CSRF token for SPA (not needed with Sanctum cookie-based auth, but kept for compatibility)
+// CSRF token endpoints for SPA authentication
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
@@ -142,10 +142,9 @@ Route::get('/sanctum/csrf-cookie', function () {
 
 // Board management routes
 Route::middleware('auth:sanctum')->group(function () {
-    // Existing board routes...
     Route::apiResource('boards', BoardController::class);
     
-    // New board status routes
+    // Board archiving functionality
     Route::post('boards/{board}/archive', [BoardController::class, 'archive']);
     Route::post('boards/{board}/unarchive', [BoardController::class, 'unarchive']);
     Route::post('boards/{id}/restore', [BoardController::class, 'restore']);

@@ -311,7 +311,7 @@ class TeamController extends Controller
                 'timestamp' => now()->timestamp,
             ]);
         } catch (\Throwable $e) {
-            // Don't fail the request if SSE queueing fails
+            // SSE notification is non-critical, continue with success response
         }
 
         $fresh = $team->fresh(['members' => function($q){ $q->select('users.id','users.name','users.avatar'); }]);

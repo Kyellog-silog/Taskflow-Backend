@@ -70,7 +70,7 @@ class TeamInvitationController extends Controller
                     'error' => $e->getMessage()
                 ]);
                 
-                // Continue without failing - invitation is created
+                // Invitation created successfully even if email fails
             }
 
             DB::commit();

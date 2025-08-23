@@ -21,8 +21,7 @@ class Board extends Model
         'last_visited_at',
     ];
 
-    // Remove automatic eager loading - load explicitly when needed  
-    // protected $with = ['team', 'createdBy', 'columns'];
+    // Eager loading disabled for performance optimization - load explicitly when needed
 
     protected $casts = [
         'archived_at' => 'datetime',

@@ -151,7 +151,7 @@ class PerformanceMonitor
                 $time = $query['time'] ?? 0;
                 $totalTime += $time;
                 
-                if ($time > 100) { // Queries slower than 100ms
+                if ($time > 100) { // Flag queries exceeding performance threshold (100ms)
                     $slowQueries[] = [
                         'sql' => $query['query'] ?? $query['sql'] ?? 'Unknown query',
                         'time_ms' => $time,

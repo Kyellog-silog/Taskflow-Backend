@@ -8,11 +8,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Register application services
     }
 
     public function boot(): void
     {
-        //
+        // Bootstrap application services
     }
 }
