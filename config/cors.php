@@ -35,7 +35,7 @@ return [
     'allowed_origins' => [
         'http://localhost:3000', 
         'http://192.168.0.12:3000',
-        'https://frontend-production-9dce.up.railway.app'
+        'https://frontend-production-c19c.up.railway.app', 
     ],
 
     'allowed_origins_patterns' => [],
