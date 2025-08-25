@@ -11,6 +11,27 @@ Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
 
+// Emergency diagnostic route
+Route::get('/debug-clear', function () {
+    try {
+        Artisan::call('config:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('route:clear');
+        return response()->json([
+            'status' => 'Cache cleared successfully',
+            'config_clear' => Artisan::output(),
+            'app_env' => env('APP_ENV'),
+            'db_host' => env('DB_HOST'),
+            'db_username' => env('DB_USERNAME')
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 // Minimal health check - no dependencies
 Route::get('/health', function () {
     return response()->json([
