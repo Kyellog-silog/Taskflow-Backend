@@ -11,6 +11,27 @@ Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
 
+// Emergency cache clear route - call this once then remove
+Route::get('/clear-all-cache', function () {
+    try {
+        \Artisan::call('config:clear');
+        \Artisan::call('cache:clear');  
+        \Artisan::call('route:clear');
+        \Artisan::call('view:clear');
+        
+        return response()->json([
+            'status' => 'All caches cleared successfully',
+            'timestamp' => now(),
+            'next_step' => 'Try /sanctum/csrf-cookie again'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 // Emergency diagnostic route
 Route::get('/debug-clear', function () {
     try {
