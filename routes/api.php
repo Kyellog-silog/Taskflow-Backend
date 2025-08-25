@@ -134,11 +134,6 @@ Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
 
-Route::get('/sanctum/csrf-cookie', function () {
-    return response()->json([
-        'message' => 'CSRF cookie set'
-    ])->cookie('XSRF-TOKEN', csrf_token(), 60, '/', config('session.domain'), false, false);
-});
 
 // Board management routes
 Route::middleware('auth:sanctum')->group(function () {
