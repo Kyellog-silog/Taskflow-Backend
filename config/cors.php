@@ -35,7 +35,8 @@ return [
     'allowed_origins' => [
         'http://localhost:3000', 
         'http://192.168.0.12:3000',
-        'https://taskflow-frontend-production-9467.up.railway.app', 
+        'https://taskflow-frontend-production-9467.up.railway.app',
+        'https://frontend-production-c19c.up.railway.app', 
     ],
 
     'allowed_origins_patterns' => [],

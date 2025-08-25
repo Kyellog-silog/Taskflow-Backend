@@ -6,21 +6,22 @@ Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
 
-// Debug route to test CSRF cookie functionality
-Route::get('/debug-csrf', function () {
+// Temporary debug route: captures and displays Sanctum CSRF cookie errors
+// REMOVE THIS IMMEDIATELY AFTER DEBUGGING!
+Route::get('/_debug/sanctum-csrf', function (\Illuminate\Http\Request $request) {
     try {
-        $token = csrf_token();
+        // Create instance of the controller and call handle method
+        $controller = new \Laravel\Sanctum\Http\Controllers\CsrfCookieController();
+        return $controller->show($request);
+    } catch (\Throwable $e) {
+        \Log::error('Debug sanctum csrf error', ['exception' => (string) $e]);
         return response()->json([
-            'status' => 'success',
-            'csrf_token' => $token,
-            'session_id' => session()->getId(),
-            'session_driver' => config('session.driver'),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
+            'error' => 'sanctum.csrf.error',
             'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
+            'type' => get_class($e),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
         ], 500);
     }
 });
