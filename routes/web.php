@@ -2,39 +2,22 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Temporary debug route that shows environment info (remove in production)
-Route::get('/_debug/env', function () {
-    // Only show safe, non-sensitive info
-    return response()->json([
-        'app' => [
-            'env' => config('app.env'),
-            'debug' => config('app.debug'),
-            'url' => config('app.url'),
-        ],
-        'sanctum' => [
-            'stateful_domains' => config('sanctum.stateful'),
-            'expiration' => config('sanctum.expiration'),
-        ],
-        'session' => [
-            'driver' => config('session.driver'),
-            'domain' => config('session.domain'),
-            'secure' => config('session.secure'),
-            'same_site' => config('session.same_site'),
-            'path' => config('session.path'),
-        ],
-        'cors' => [
-            'paths' => config('cors.paths'),
-            'allowed_origins' => config('cors.allowed_origins'),
-            'supports_credentials' => config('cors.supports_credentials'),
-        ],
-        'headers' => collect(request()->headers->all())
-            ->filter(fn($v, $k) => in_array(strtolower($k), ['origin', 'host', 'user-agent', 'accept', 'referer']))
-            ->toArray(),
-    ]);
+// Simple test route
+Route::get('/test', function () {
+    return response()->json(['message' => 'Basic routing works']);
 });
 
 Route::get('/', function () {
     return ['Laravel' => app()->version()];
+});
+
+// Minimal health check - no dependencies
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok', 
+        'timestamp' => now(),
+        'app_env' => app()->environment()
+    ]);
 });
 
 // Temporary debug route: captures and displays Sanctum CSRF cookie errors
