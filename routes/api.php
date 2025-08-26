@@ -160,3 +160,14 @@ Route::get('/db-test', function () {
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
+
+// Debug mail configuration (remove in production)
+Route::get('/mail-config', function () {
+    return response()->json([
+        'mail_mailer' => config('mail.default'),
+        'mail_from_address' => config('mail.from.address'),
+        'mail_from_name' => config('mail.from.name'),
+        'resend_key_set' => env('RESEND_KEY') ? 'SET' : 'NOT SET',
+        'frontend_url' => config('app.frontend_url'),
+    ]);
+});

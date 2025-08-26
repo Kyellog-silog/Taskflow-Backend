@@ -62,12 +62,25 @@ class TeamInvitationController extends Controller
 
             // Send invitation email
             try {
+                Log::info('Attempting to send invitation email', [
+                    'invitation_id' => $invitation->id,
+                    'email' => $validated['email'],
+                    'mail_driver' => config('mail.default'),
+                    'from_address' => config('mail.from.address'),
+                ]);
+                
                 Mail::to($validated['email'])->send(new TeamInvitationMail($invitation));
+                
+                Log::info('Invitation email sent successfully', [
+                    'invitation_id' => $invitation->id,
+                    'email' => $validated['email']
+                ]);
             } catch (\Exception $e) {
                 Log::error('Failed to send invitation email', [
                     'invitation_id' => $invitation->id,
                     'email' => $validated['email'],
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 
                 // Invitation created successfully even if email fails
