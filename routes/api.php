@@ -70,6 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/boards/{board}/teams', [BoardController::class, 'getTeams']);
     Route::post('/boards/{board}/teams/{team}', [BoardController::class, 'addTeam']);
     Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam']);
+    
+    // Board archiving functionality
+    Route::post('boards/{board}/archive', [BoardController::class, 'archive']);
+    Route::post('boards/{board}/unarchive', [BoardController::class, 'unarchive']);
+    Route::post('boards/{id}/restore', [BoardController::class, 'restore']);
 
     // Task routes
     Route::apiResource('tasks', TaskController::class);
@@ -132,15 +137,4 @@ Route::get('/health', function () {
 // CSRF token endpoints for SPA authentication
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
-});
-
-
-// Board management routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::apiResource('boards', BoardController::class);
-    
-    // Board archiving functionality
-    Route::post('boards/{board}/archive', [BoardController::class, 'archive']);
-    Route::post('boards/{board}/unarchive', [BoardController::class, 'unarchive']);
-    Route::post('boards/{id}/restore', [BoardController::class, 'restore']);
 });

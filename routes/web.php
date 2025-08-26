@@ -11,18 +11,49 @@ Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
 
+// Debug registration endpoint
+Route::post('/debug-register', function (\Illuminate\Http\Request $request) {
+    return response()->json([
+        'received_data' => $request->all(),
+        'validation_rules' => [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', 'min:8'],
+        ],
+        'headers' => $request->headers->all(),
+        'cookies' => $request->cookies->all(),
+    ]);
+});
+
+// Debug session endpoint
+Route::get('/debug-session', function (\Illuminate\Http\Request $request) {
+    return response()->json([
+        'session_id' => $request->session()->getId(),
+        'session_data' => $request->session()->all(),
+        'auth_user' => $request->user(),
+        'cookies' => $request->cookies->all(),
+        'headers' => [
+            'User-Agent' => $request->header('User-Agent'),
+            'X-Requested-With' => $request->header('X-Requested-With'),
+            'Accept' => $request->header('Accept'),
+        ],
+        'is_authenticated' => Auth::check(),
+        'auth_id' => Auth::id(),
+    ]);
+});
+
 // Emergency cache clear route - call this once then remove
 Route::get('/clear-all-cache', function () {
     try {
-        \Artisan::call('config:clear');
-        \Artisan::call('cache:clear');  
-        \Artisan::call('route:clear');
-        \Artisan::call('view:clear');
-        
+        Artisan::call('config:clear');
+        Artisan::call('cache:clear');
+        Artisan::call('route:clear');
         return response()->json([
             'status' => 'All caches cleared successfully',
-            'timestamp' => now(),
-            'next_step' => 'Try /sanctum/csrf-cookie again'
+            'artisan_output' => Artisan::output(),
+            'app_env' => env('APP_ENV'),
+            'db_host' => env('DB_HOST'),
+            'db_username' => env('DB_USERNAME')
         ]);
     } catch (\Exception $e) {
         return response()->json([
@@ -90,7 +121,5 @@ Route::get('/_debug/sanctum-csrf', function (\Illuminate\Http\Request $request) 
         ], 500);
     }
 });
-
-require __DIR__.'/auth.php';
 
 require __DIR__.'/auth.php';

@@ -20,7 +20,7 @@ return [
         'localhost,localhost:3000,127.0.0.1,127.0.0.1:3000,127.0.0.1:8000,::1',
         Sanctum::currentApplicationUrlWithPort(),
         env('FRONTEND_URL') ? ','.parse_url(env('FRONTEND_URL'), PHP_URL_HOST) : ''
-    )).',taskflow-frontend-production-9467.up.railway.app,frontend-production-c19c.up.railway.app'),
+    )).',taskflow-frontend-production-9467.up.railway.app'),
 
     /*
     |--------------------------------------------------------------------------
