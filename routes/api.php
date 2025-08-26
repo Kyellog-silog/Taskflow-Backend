@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -132,6 +133,27 @@ Route::get('/health', function () {
         'version' => '1.0.0',
         'laravel_version' => app()->version(),
     ]);
+});
+
+// Database connectivity test
+Route::get('/db-test', function () {
+    try {
+        $dbConnection = DB::connection()->getPdo();
+        $dbName = DB::connection()->getDatabaseName();
+        
+        return response()->json([
+            'status' => 'DB_CONNECTED',
+            'database' => $dbName,
+            'connection' => 'successful',
+            'timestamp' => now(),
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'DB_ERROR',
+            'error' => $e->getMessage(),
+            'timestamp' => now(),
+        ], 500);
+    }
 });
 
 // CSRF token endpoints for SPA authentication
