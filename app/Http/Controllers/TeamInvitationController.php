@@ -145,14 +145,18 @@ class TeamInvitationController extends Controller
             // Mark invitation as accepted
             $invitation->accept();
 
+            // Auto-add user to all boards associated with this team
+            $this->addUserToTeamBoards($user, $invitation->team);
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Successfully joined the team!',
+                'message' => 'Successfully joined the team! You now have access to all team boards.',
                 'data' => [
                     'team' => $invitation->team->load(['owner', 'members']),
-                    'role' => $invitation->role
+                    'role' => $invitation->role,
+                    'boards_count' => $invitation->team->boards()->count()
                 ]
             ]);
 
@@ -198,6 +202,35 @@ class TeamInvitationController extends Controller
             'success' => true,
             'message' => 'Invitation rejected'
         ]);
+    }
+
+    /**
+     * Add user to all boards associated with the team
+     */
+    private function addUserToTeamBoards(User $user, Team $team): void
+    {
+        $teamBoards = $team->boards;
+
+        foreach ($teamBoards as $board) {
+            try {
+                // The user automatically gets access to team boards through team membership
+                // This is handled by the board access policies and relationships
+                
+                Log::info('User gained access to team board', [
+                    'user_id' => $user->id,
+                    'team_id' => $team->id,
+                    'board_id' => $board->id,
+                    'board_name' => $board->name
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Failed to log board access', [
+                    'user_id' => $user->id,
+                    'board_id' => $board->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 
     /**

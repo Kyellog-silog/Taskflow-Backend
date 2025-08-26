@@ -3,7 +3,17 @@
 return [
 
     /*
-    |--------------------------------------------------------------------------
+    |----------------------         ],
+
+        'resend' => [
+            'transport' => 'resend',
+            'key' => env('RESEND_KEY'),
+        ],
+
+        'sendmail' => [nd' => [
+            'transport' => 'resend',
+            'key' => env('RESEND_KEY'),
+        ],--------------------------------------------
     | Default Mailer
     |--------------------------------------------------------------------------
     |
@@ -49,6 +59,11 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'resend' => [
+            'transport' => 'resend',
+            'key' => env('RESEND_KEY'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -63,6 +78,7 @@ return [
 
         'resend' => [
             'transport' => 'resend',
+            'key' => env('RESEND_KEY'),
         ],
 
         'sendmail' => [
