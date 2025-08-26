@@ -61,7 +61,6 @@ return [
 
         'resend' => [
             'transport' => 'resend',
-            'key' => env('RESEND_KEY'),
         ],
 
         'ses' => [
@@ -74,11 +73,6 @@ return [
             // 'client' => [
             //     'timeout' => 5,
             // ],
-        ],
-
-        'resend' => [
-            'transport' => 'resend',
-            'key' => env('RESEND_KEY'),
         ],
 
         'sendmail' => [
