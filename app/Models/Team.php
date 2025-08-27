@@ -42,6 +42,11 @@ class Team extends Model
         'owner_id',
     ];
 
+    protected $casts = [
+        // Encrypt sensitive team data
+        'description' => 'encrypted',
+    ];
+
     protected $with = ['owner', 'members'];
 
     public function owner(): BelongsTo

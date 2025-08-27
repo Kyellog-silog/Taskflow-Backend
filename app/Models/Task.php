@@ -40,6 +40,8 @@ class Task extends Model
         'due_date' => 'date',
         'completed_at' => 'datetime',
         'position' => 'integer',
+        // Encrypt sensitive task data
+        'description' => 'encrypted',
     ];
 
     /**
