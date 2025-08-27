@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -164,13 +165,50 @@ Route::get('/csrf-token', function () {
 // Debug mail configuration (remove in production)
 Route::get('/mail-config', function () {
     return response()->json([
-        'mail_mailer' => config('mail.default'),
-        'mail_from_address' => config('mail.from.address'),
-        'mail_from_name' => config('mail.from.name'),
+        'mail_driver' => config('mail.default'),
         'smtp_host' => config('mail.mailers.smtp.host'),
         'smtp_port' => config('mail.mailers.smtp.port'),
         'smtp_username' => env('MAIL_USERNAME') ? 'SET' : 'NOT SET',
         'smtp_password' => env('MAIL_PASSWORD') ? 'SET' : 'NOT SET',
         'frontend_url' => config('app.frontend_url'),
     ]);
+});
+
+// Test mail configuration
+Route::get('/test-mail', function (Request $request) {
+    try {
+        $testEmail = $request->get('email', 'taskflow91@gmail.com');
+        
+        Mail::raw('This is a test email from TaskFlow to verify SMTP configuration.', function ($message) use ($testEmail) {
+            $message->to($testEmail)
+                    ->subject('TaskFlow SMTP Test')
+                    ->from(config('mail.from.address'), config('mail.from.name'));
+        });
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Test email sent successfully',
+            'config' => [
+                'mailer' => config('mail.default'),
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'username' => config('mail.mailers.smtp.username'),
+                'from' => config('mail.from.address'),
+                'encryption' => config('mail.mailers.smtp.encryption'),
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'config' => [
+                'mailer' => config('mail.default'),
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'username' => config('mail.mailers.smtp.username'),
+                'from' => config('mail.from.address'),
+                'encryption' => config('mail.mailers.smtp.encryption'),
+            ]
+        ], 500);
+    }
 });
