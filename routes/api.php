@@ -167,7 +167,10 @@ Route::get('/mail-config', function () {
         'mail_mailer' => config('mail.default'),
         'mail_from_address' => config('mail.from.address'),
         'mail_from_name' => config('mail.from.name'),
-        'resend_key_set' => env('RESEND_KEY') ? 'SET' : 'NOT SET',
+        'smtp_host' => config('mail.mailers.smtp.host'),
+        'smtp_port' => config('mail.mailers.smtp.port'),
+        'smtp_username' => env('MAIL_USERNAME') ? 'SET' : 'NOT SET',
+        'smtp_password' => env('MAIL_PASSWORD') ? 'SET' : 'NOT SET',
         'frontend_url' => config('app.frontend_url'),
     ]);
 });
