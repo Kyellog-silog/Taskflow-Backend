@@ -141,3 +141,54 @@ Route::get('/health', function () {
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
+
+// TEMPORARY: Production data isolation debug endpoint - REMOVE AFTER FIXING
+Route::get('/debug/data-isolation', function () {
+    if (!app()->environment(['production', 'staging'])) {
+        return response()->json(['error' => 'This endpoint is only available in production']);
+    }
+    
+    try {
+        $totalUsers = \App\Models\User::count();
+        $totalTeams = \App\Models\Team::count();
+        $totalBoards = \App\Models\Board::count();
+        $totalTasks = \App\Models\Task::count();
+        
+        // Find potential demo data
+        $demoUsers = \App\Models\User::whereIn('email', [
+            'test@example.com',
+            'member@example.com', 
+            'viewer@example.com'
+        ])->get(['id', 'name', 'email', 'created_at']);
+        
+        $demoTeams = \App\Models\Team::where('name', 'Demo Team')
+            ->orWhere('description', 'like', '%demo%')
+            ->get(['id', 'name', 'description', 'owner_id', 'created_at']);
+            
+        $demoBoards = \App\Models\Board::where('name', 'Demo Board')
+            ->orWhere('description', 'like', '%demo%')
+            ->with('createdBy:id,name,email')
+            ->get(['id', 'name', 'description', 'team_id', 'created_by', 'created_at']);
+        
+        return response()->json([
+            'summary' => [
+                'total_users' => $totalUsers,
+                'total_teams' => $totalTeams, 
+                'total_boards' => $totalBoards,
+                'total_tasks' => $totalTasks,
+            ],
+            'demo_data' => [
+                'users' => $demoUsers,
+                'teams' => $demoTeams,
+                'boards' => $demoBoards,
+            ],
+            'timestamp' => now(),
+            'environment' => app()->environment(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+})->middleware('auth:sanctum');

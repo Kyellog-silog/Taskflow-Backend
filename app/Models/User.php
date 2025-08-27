@@ -76,12 +76,12 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-    'password' => 'hashed',
-    // Encrypted PII fields
-    'bio' => 'encrypted',
-    'phone' => 'encrypted',
-    'location' => 'encrypted',
-    'website' => 'encrypted',
+        'password' => 'hashed',
+        // Encrypted PII fields (excluding core auth fields to maintain Laravel functionality)
+        'bio' => 'encrypted',
+        'phone' => 'encrypted',
+        'location' => 'encrypted',
+        'website' => 'encrypted',
     ];
 
     public function teams(): BelongsToMany
@@ -135,5 +135,42 @@ class User extends Authenticatable
     {
         return $this->ownedTeams->contains($team) || 
                $this->teams->where('pivot.role', 'admin')->contains($team);
+    }
+
+    /**
+     * Get a privacy-friendly display name (first name + last initial)
+     */
+    public function getDisplayName(): string
+    {
+        $nameParts = explode(' ', trim($this->name));
+        if (count($nameParts) === 1) {
+            return $nameParts[0]; // Single name, return as-is
+        }
+        
+        $firstName = $nameParts[0];
+        $lastInitial = strtoupper(substr(end($nameParts), 0, 1));
+        
+        return $firstName . ' ' . $lastInitial . '.';
+    }
+
+    /**
+     * Get a masked email for privacy (first 3 chars + domain)
+     */
+    public function getMaskedEmail(): string
+    {
+        $parts = explode('@', $this->email);
+        if (count($parts) !== 2) {
+            return '***@***.***'; // Fallback for invalid emails
+        }
+        
+        $username = $parts[0];
+        $domain = $parts[1];
+        
+        // Show first 3 characters of username, mask the rest
+        $maskedUsername = strlen($username) > 3 
+            ? substr($username, 0, 3) . str_repeat('*', strlen($username) - 3)
+            : str_repeat('*', strlen($username));
+            
+        return $maskedUsername . '@' . $domain;
     }
 }

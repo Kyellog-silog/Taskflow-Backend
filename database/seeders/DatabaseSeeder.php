@@ -13,9 +13,18 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     * 
+     * NOTE: This seeder should only be used in development/testing environments.
+     * Production data should be created through the application interface.
      */
     public function run(): void
     {
+        // Only seed in development/testing environments
+        if (app()->environment(['production'])) {
+            $this->command->info('Skipping seeder in production environment.');
+            return;
+        }
+
         // Create main test user (team owner)
         $admin = User::factory()->create([
             'name' => 'Test Admin',
