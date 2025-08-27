@@ -22,9 +22,23 @@ class TeamInvitationController extends Controller
     {
         Gate::authorize('manage', $team);
 
+        Log::info('Team invitation request received', [
+            'team_id' => $team->id,
+            'request_data' => $request->all(),
+            'user_id' => $request->user()->id
+        ]);
+
         $validated = $request->validate([
             'email' => 'required|email',
-            'role' => 'required|in:admin,member,viewer',
+            'role' => 'sometimes|in:admin,member,viewer',
+        ]);
+
+        // Set default role if not provided
+        $validated['role'] = $validated['role'] ?? 'member';
+
+        Log::info('Validated invitation data', [
+            'validated' => $validated,
+            'team_id' => $team->id
         ]);
 
         // Check if user is already a team member
@@ -49,10 +63,11 @@ class TeamInvitationController extends Controller
             if ($existingInvitation) {
                 $invitation = $existingInvitation;
                 $invitation->update([
-                    'token' => \Illuminate\Support\Str::random(32),
+                    'token' => (string) \Illuminate\Support\Str::uuid(), // Use UUID like model boot method
                     'invited_by' => $request->user()->id,
                     'role' => $validated['role'],
                     'created_at' => now(), // Reset invitation timestamp
+                    'expires_at' => now()->addDays(7), // Reset expiration
                 ]);
                 
                 Log::info('Resending existing invitation', [
@@ -114,13 +129,16 @@ class TeamInvitationController extends Controller
             DB::rollback();
             Log::error('Failed to create team invitation', [
                 'team_id' => $team->id,
-                'email' => $validated['email'],
-                'error' => $e->getMessage()
+                'email' => $validated['email'] ?? 'unknown',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send invitation'
+                'message' => 'Failed to send invitation: ' . $e->getMessage()
             ], 500);
         }
     }
