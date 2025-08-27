@@ -149,46 +149,71 @@ Route::get('/debug/data-isolation', function () {
     }
     
     try {
-        $totalUsers = \App\Models\User::count();
-        $totalTeams = \App\Models\Team::count();
-        $totalBoards = \App\Models\Board::count();
-        $totalTasks = \App\Models\Task::count();
+        $user = request()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Not authenticated']);
+        }
         
-        // Find potential demo data
-        $demoUsers = \App\Models\User::whereIn('email', [
-            'test@example.com',
-            'member@example.com', 
-            'viewer@example.com'
-        ])->get(['id', 'name', 'email', 'created_at']);
+        // Get current user's boards using the scope
+        $userBoardsWithScope = \App\Models\Board::forUser($user->id)->get(['id', 'name', 'created_by', 'team_id']);
         
-        $demoTeams = \App\Models\Team::where('name', 'Demo Team')
-            ->orWhere('description', 'like', '%demo%')
-            ->get(['id', 'name', 'description', 'owner_id', 'created_at']);
-            
-        $demoBoards = \App\Models\Board::where('name', 'Demo Board')
-            ->orWhere('description', 'like', '%demo%')
-            ->with('createdBy:id,name,email')
-            ->get(['id', 'name', 'description', 'team_id', 'created_by', 'created_at']);
+        // Get ALL boards (to see what exists)
+        $allBoards = \App\Models\Board::all(['id', 'name', 'created_by', 'team_id']);
+        
+        // Get user's team memberships
+        $userTeams = $user->teams()->get(['teams.id', 'teams.name', 'team_members.role']);
+        $ownedTeams = $user->ownedTeams()->get(['id', 'name']);
         
         return response()->json([
-            'summary' => [
-                'total_users' => $totalUsers,
-                'total_teams' => $totalTeams, 
-                'total_boards' => $totalBoards,
-                'total_tasks' => $totalTasks,
+            'current_user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
             ],
-            'demo_data' => [
-                'users' => $demoUsers,
-                'teams' => $demoTeams,
-                'boards' => $demoBoards,
-            ],
+            'user_boards_via_scope' => $userBoardsWithScope,
+            'all_boards_in_db' => $allBoards,
+            'user_teams' => $userTeams,
+            'owned_teams' => $ownedTeams,
+            'session_id' => request()->session()->getId(),
             'timestamp' => now(),
-            'environment' => app()->environment(),
         ]);
     } catch (\Exception $e) {
         return response()->json([
             'error' => $e->getMessage(),
             'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+})->middleware('auth:sanctum');
+
+// TEMPORARY: Debug user isolation endpoint
+Route::get('/debug/user-isolation', function () {
+    try {
+        $user = request()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Not authenticated']);
+        }
+        
+        // Test the exact query that BoardController uses
+        $query = \App\Models\Board::forUser($user->id)
+            ->with([
+                'createdBy:id,name',
+                'team:id,name,owner_id',
+                'columns:id,board_id,name,position,color',
+            ])
+            ->withCount(['tasks']);
+            
+        $boards = $query->get();
+        
+        return response()->json([
+            'user_id' => $user->id,
+            'boards_count' => $boards->count(),
+            'boards' => $boards,
+            'raw_sql' => $query->toSql(),
+            'bindings' => $query->getBindings(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
         ], 500);
     }
 })->middleware('auth:sanctum');

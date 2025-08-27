@@ -91,17 +91,21 @@ class Board extends Model
     /**
      * Scope to get boards accessible by a specific user.
      * This includes:
-     * - Personal boards created by the user
+     * - Personal boards created by the user (where team_id is null)
      * - Boards from teams where the user is a member
      */
     public function scopeForUser($query, $userId)
     {
         return $query->where(function($q) use ($userId) {
-            $q->where('created_by', $userId)
-              ->whereNull('team_id')
-              ->orWhereHas('team', function ($q) use ($userId) {
-                  $q->forUser($userId);
-              });
+            // Personal boards: created by user AND no team assigned
+            $q->where(function($personalQuery) use ($userId) {
+                $personalQuery->where('created_by', $userId)
+                             ->whereNull('team_id');
+            })
+            // OR team boards: user is member of the team
+            ->orWhereHas('team', function ($teamQuery) use ($userId) {
+                $teamQuery->forUser($userId);
+            });
         });
     }
 
