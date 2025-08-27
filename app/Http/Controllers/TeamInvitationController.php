@@ -42,23 +42,37 @@ class TeamInvitationController extends Controller
             ->pending()
             ->first();
 
-        if ($existingInvitation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'An invitation is already pending for this email'
-            ], 400);
-        }
-
         try {
             DB::beginTransaction();
 
-            // Create invitation
-            $invitation = TeamInvitation::create([
-                'team_id' => $team->id,
-                'invited_by' => $request->user()->id,
-                'email' => $validated['email'],
-                'role' => $validated['role'],
-            ]);
+            // If invitation exists, update it with new token and timestamp (resend)
+            if ($existingInvitation) {
+                $invitation = $existingInvitation;
+                $invitation->update([
+                    'token' => \Illuminate\Support\Str::random(32),
+                    'invited_by' => $request->user()->id,
+                    'role' => $validated['role'],
+                    'created_at' => now(), // Reset invitation timestamp
+                ]);
+                
+                Log::info('Resending existing invitation', [
+                    'invitation_id' => $invitation->id,
+                    'email' => $validated['email']
+                ]);
+            } else {
+                // Create new invitation
+                $invitation = TeamInvitation::create([
+                    'team_id' => $team->id,
+                    'invited_by' => $request->user()->id,
+                    'email' => $validated['email'],
+                    'role' => $validated['role'],
+                ]);
+                
+                Log::info('Creating new invitation', [
+                    'invitation_id' => $invitation->id,
+                    'email' => $validated['email']
+                ]);
+            }
 
             // Send invitation email
             try {
@@ -88,9 +102,11 @@ class TeamInvitationController extends Controller
 
             DB::commit();
 
+            $message = $existingInvitation ? 'Invitation resent successfully' : 'Invitation sent successfully';
+
             return response()->json([
                 'success' => true,
-                'message' => 'Invitation sent successfully',
+                'message' => $message,
                 'data' => $invitation->load(['team', 'inviter'])
             ], 201);
 
