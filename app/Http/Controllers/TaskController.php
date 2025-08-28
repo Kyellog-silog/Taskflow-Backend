@@ -243,7 +243,7 @@ class TaskController extends Controller
                 'description' => $validated['description'] ?? null,
                 'board_id' => $validated['board_id'],
                 'column_id' => $validated['column_id'],
-                'assignee_id' => $validated['assignee_id'] ?? null,
+                'assignee_id' => $validated['assignee_id'] ?? $request->user()->id, // Default to creator
                 'created_by' => $request->user()->id,
                 'priority' => $validated['priority'] ?? 'medium',
                 'due_date' => $validated['due_date'] ?? null,
