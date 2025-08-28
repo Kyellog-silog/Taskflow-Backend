@@ -36,30 +36,27 @@ class BoardController extends Controller
                     'createdBy:id,name',
                     'team:id,name,owner_id',
                     'columns:id,board_id,name,position,color',
-                ])
-                ->withCount(['tasks']);
+                ]);
 
             switch ($type) {
                 case 'recent':
-                    $query = $query->active()->recentlyVisited($limit ?: 5);
+                    $boards = $query->active()->recentlyVisited($limit ?: 5)->get();
                     break;
                 case 'archived':
-                    $query = $query->archived()->orderBy('archived_at', 'desc');
+                    $boards = $query->archived()->orderBy('archived_at', 'desc')->get();
                     break;
                 case 'deleted':
-                    $query = $query->onlyTrashed()->orderBy('deleted_at', 'desc');
+                    $boards = $query->onlyTrashed()->orderBy('deleted_at', 'desc')->get();
                     break;
                 case 'active':
                 default:
-                    $query = $query->active()->orderBy('created_at', 'desc');
+                    $boards = $query->active()->orderBy('created_at', 'desc')->get();
                     break;
             }
 
             if ($limit && $type !== 'recent') {
-                $query = $query->limit($limit);
+                $boards = $boards->take($limit);
             }
-            
-            $boards = $query->get();
             
             Log::info('Boards fetched successfully', [
                 'count' => $boards->count(),
@@ -70,8 +67,7 @@ class BoardController extends Controller
                 'success' => true,
                 'data' => \App\Http\Resources\BoardResource::collection($boards)
             ]);
-            // Safe caching for listing (user-bound via auth cookie; mark private)
-            $response->headers->set('Cache-Control', 'private, max-age=60');
+            
             return $response;
         } catch (\Exception $e) {
             Log::error('Error fetching boards', [
@@ -464,7 +460,6 @@ class BoardController extends Controller
                     'createdBy:id,name',
                     'columns:id,board_id,name,position,color',
                 ])
-                ->withCount(['tasks'])
                 ->get();
                 
             Log::info('Team boards fetched successfully', [

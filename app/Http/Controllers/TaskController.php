@@ -38,23 +38,21 @@ class TaskController extends Controller
 
             $query = Task::query();
             
-            // Only load relationships when needed
-            $relationships = ['assignee:id,name,avatar', 'createdBy:id,name'];
+            $relationships = $request->boolean('only_count') ? [] : [
+                'assignee:id,name,avatar', 
+                'createdBy:id,name'
+            ];
             
             if (!$request->boolean('only_count')) {
-                if ($request->get('include_board')) {
-                    $relationships[] = 'board:id,name,team_id,created_by';
-                }
-                if ($request->get('include_column')) {
-                    $relationships[] = 'column:id,board_id,name';
-                }
+                $request->get('include_board') && $relationships[] = 'board:id,name,team_id,created_by';
+                $request->get('include_column') && $relationships[] = 'column:id,board_id,name';
                 if ($request->get('include_comments')) {
                     $relationships[] = 'comments:id,task_id,user_id,content,created_at';
                     $relationships[] = 'comments.user:id,name,avatar';
                 }
             }
             
-            $query->with($relationships);
+            $relationships && $query->with($relationships);
 
             // Filter by board
             if ($request->has('board_id')) {

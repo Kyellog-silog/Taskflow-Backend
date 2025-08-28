@@ -53,6 +53,10 @@ Route::middleware('auth:sanctum')->group(function () {
     
     Route::put('/user/profile', [RegisteredUserController::class, 'updateProfile']);
     
+    // Password routes
+    Route::post('/password/change', [App\Http\Controllers\PasswordController::class, 'change']);
+    Route::post('/password/set-initial', [App\Http\Controllers\PasswordController::class, 'setInitial']);
+    
 
     // Team routes
     Route::apiResource('teams', TeamController::class);

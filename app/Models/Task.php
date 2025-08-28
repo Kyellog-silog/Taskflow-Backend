@@ -137,7 +137,8 @@ class Task extends Model
      */
     public function scopeByBoard($query, $boardId)
     {
-        return $query->where('board_id', $boardId);
+        return $query->select('id', 'title', 'description', 'board_id', 'column_id', 'assignee_id', 'created_by', 'priority', 'due_date', 'position', 'completed_at', 'created_at', 'updated_at')
+            ->where('board_id', $boardId);
     }
 
     /**

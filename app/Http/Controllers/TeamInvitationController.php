@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Mail\TeamInvitationMail;
@@ -152,6 +153,12 @@ class TeamInvitationController extends Controller
      */
     public function accept(Request $request, string $token): JsonResponse
     {
+        $validated = $request->validate([
+            'new_password' => 'nullable|min:8|confirmed',
+            'new_password_confirmation' => 'nullable|required_with:new_password',
+            'current_password' => 'nullable|required_with:new_password',
+        ]);
+
         $invitation = TeamInvitation::where('token', $token)->first();
 
         if (!$invitation) {
@@ -169,7 +176,6 @@ class TeamInvitationController extends Controller
             ], 400);
         }
 
-        // Check if user exists and matches invitation email
         $user = $request->user();
         if ($user->email !== $invitation->email) {
             return response()->json([
@@ -178,7 +184,6 @@ class TeamInvitationController extends Controller
             ], 403);
         }
 
-        // Check if user is already a team member
         if ($invitation->team->isMember($user)) {
             $invitation->update(['status' => 'accepted', 'accepted_at' => now()]);
             return response()->json([
@@ -190,24 +195,37 @@ class TeamInvitationController extends Controller
         try {
             DB::beginTransaction();
 
-            // Add user to team
+            if ($validated['new_password']) {
+                if ($validated['current_password'] && !Hash::check($validated['current_password'], $user->password)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Current password is incorrect'
+                    ], 400);
+                }
+                
+                $user->update(['password' => Hash::make($validated['new_password'])]);
+                Log::info('Password updated during invitation acceptance', ['user_id' => $user->id]);
+            }
+
             $invitation->team->addMember($user, $invitation->role);
-
-            // Mark invitation as accepted
             $invitation->accept();
-
-            // Auto-add user to all boards associated with this team
             $this->addUserToTeamBoards($user, $invitation->team);
 
             DB::commit();
 
+            $message = 'Successfully joined the team! You now have access to all team boards.';
+            if ($validated['new_password']) {
+                $message .= ' Your password has been updated.';
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Successfully joined the team! You now have access to all team boards.',
+                'message' => $message,
                 'data' => [
                     'team' => $invitation->team->load(['owner', 'members']),
                     'role' => $invitation->role,
-                    'boards_count' => $invitation->team->boards()->count()
+                    'boards_count' => $invitation->team->boards()->count(),
+                    'password_updated' => !empty($validated['new_password'])
                 ]
             ]);
 

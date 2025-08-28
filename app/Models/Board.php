@@ -96,17 +96,15 @@ class Board extends Model
      */
     public function scopeForUser($query, $userId)
     {
-        return $query->where(function($q) use ($userId) {
-            // Personal boards: created by user AND no team assigned
-            $q->where(function($personalQuery) use ($userId) {
-                $personalQuery->where('created_by', $userId)
-                             ->whereNull('team_id');
-            })
-            // OR team boards: user is member of the team
-            ->orWhereHas('team', function ($teamQuery) use ($userId) {
-                $teamQuery->forUser($userId);
+        return $query->select('id', 'name', 'description', 'team_id', 'created_by', 'archived_at', 'last_visited_at', 'created_at', 'updated_at')
+            ->where(function($q) use ($userId) {
+                $q->where(function($personalQuery) use ($userId) {
+                    $personalQuery->where('created_by', $userId)->whereNull('team_id');
+                })
+                ->orWhereHas('team', function ($teamQuery) use ($userId) {
+                    $teamQuery->forUser($userId);
+                });
             });
-        });
     }
 
     /**

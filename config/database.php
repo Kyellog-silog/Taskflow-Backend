@@ -97,6 +97,8 @@ return [
             'options' => [
                 PDO::ATTR_TIMEOUT => 30,
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_PERSISTENT => env('DB_PERSISTENT', false),
+                PDO::ATTR_EMULATE_PREPARES => false,
             ],
         ],
 
