@@ -61,7 +61,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
         'avatar',
         'bio',
         'phone',
@@ -114,16 +113,6 @@ class User extends Authenticatable
     public function activities(): HasMany
     {
         return $this->hasMany(TaskActivity::class);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->role === 'admin';
-    }
-
-    public function isMember(): bool
-    {
-        return $this->role === 'member';
     }
 
     public function canAccessTeam(Team $team): bool
