@@ -29,10 +29,10 @@ use Illuminate\Support\Facades\Gate;
 
 // Public authentication routes
 Route::prefix('auth')->group(function () {
-    Route::post('/register', [RegisteredUserController::class, 'store']);
-    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
-    Route::post('/reset-password', [NewPasswordController::class, 'store']);
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:5,1');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:10,1');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:5,1');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:5,1');
 });
 
 // Public team invitation routes (no auth required for viewing/accepting)
@@ -65,7 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/teams/{team}/members/{user}/role', [TeamController::class, 'updateMemberRole']);
     
     // Team invitation routes
-    Route::post('/teams/{team}/invite', [TeamInvitationController::class, 'invite']);
+    Route::post('/teams/{team}/invite', [TeamInvitationController::class, 'invite'])->middleware('throttle:10,1');
     Route::get('/teams/{team}/invitations', [TeamInvitationController::class, 'index']);
     Route::delete('/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'destroy']);
 
@@ -146,78 +146,4 @@ Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
 
-// TEMPORARY: Production data isolation debug endpoint - REMOVE AFTER FIXING
-Route::get('/debug/data-isolation', function () {
-    if (!app()->environment(['production', 'staging'])) {
-        return response()->json(['error' => 'This endpoint is only available in production']);
-    }
-    
-    try {
-        $user = request()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Not authenticated']);
-        }
-        
-        // Get current user's boards using the scope
-        $userBoardsWithScope = \App\Models\Board::forUser($user->id)->get(['id', 'name', 'created_by', 'team_id']);
-        
-        // Get ALL boards (to see what exists)
-        $allBoards = \App\Models\Board::all(['id', 'name', 'created_by', 'team_id']);
-        
-        // Get user's team memberships
-        $userTeams = $user->teams()->get(['teams.id', 'teams.name', 'team_members.role']);
-        $ownedTeams = $user->ownedTeams()->get(['id', 'name']);
-        
-        return response()->json([
-            'current_user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'user_boards_via_scope' => $userBoardsWithScope,
-            'all_boards_in_db' => $allBoards,
-            'user_teams' => $userTeams,
-            'owned_teams' => $ownedTeams,
-            'session_id' => request()->session()->getId(),
-            'timestamp' => now(),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ], 500);
-    }
-})->middleware('auth:sanctum');
 
-// TEMPORARY: Debug user isolation endpoint
-Route::get('/debug/user-isolation', function () {
-    try {
-        $user = request()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Not authenticated']);
-        }
-        
-        // Test the exact query that BoardController uses
-        $query = \App\Models\Board::forUser($user->id)
-            ->with([
-                'createdBy:id,name',
-                'team:id,name,owner_id',
-                'columns:id,board_id,name,position,color',
-            ])
-            ->withCount(['tasks']);
-            
-        $boards = $query->get();
-        
-        return response()->json([
-            'user_id' => $user->id,
-            'boards_count' => $boards->count(),
-            'boards' => $boards,
-            'raw_sql' => $query->toSql(),
-            'bindings' => $query->getBindings(),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-})->middleware('auth:sanctum');

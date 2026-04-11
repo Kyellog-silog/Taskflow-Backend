@@ -4,66 +4,65 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\Hash; // still needed for Hash::check() verification
+use Illuminate\Validation\Rules;
 
 class PasswordController extends Controller
 {
     /**
-     * Change user password
+     * Change the authenticated user's password after verifying the current one.
+     * Revokes all existing tokens so other sessions are logged out.
      */
     public function change(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'current_password' => 'required|string',
-            'new_password' => ['required', 'string', 'confirmed', Password::defaults()],
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = $request->user();
 
-        if (!Hash::check($validated['current_password'], $user->password)) {
+        if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Current password is incorrect'
+                'message' => 'Current password is incorrect',
             ], 400);
         }
 
-        $user->update([
-            'password' => Hash::make($validated['new_password'])
-        ]);
+        $user->update(['password' => $request->password]); // 'hashed' cast on User model handles bcrypt
+
+        // Invalidate all existing tokens so stolen tokens are rendered useless
+        $user->tokens()->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Password changed successfully'
+            'message' => 'Password changed successfully. Please log in again.',
         ]);
     }
 
     /**
-     * Set initial password (for users who haven't set one yet)
+     * Set an initial password for users who registered via social auth and have no password yet.
      */
     public function setInitial(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+        $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = $request->user();
 
-        // Only allow if user has a temporary/default password or no password
-        if (!empty($user->password) && strlen($user->password) > 10) {
+        if ($user->password) {
             return response()->json([
                 'success' => false,
-                'message' => 'Password already set. Use change password instead.'
+                'message' => 'A password is already set. Use the change password endpoint instead.',
             ], 400);
         }
 
-        $user->update([
-            'password' => Hash::make($validated['password'])
-        ]);
+        $user->update(['password' => $request->password]); // 'hashed' cast on User model handles bcrypt
 
         return response()->json([
             'success' => true,
-            'message' => 'Password set successfully'
+            'message' => 'Password set successfully.',
         ]);
     }
 }

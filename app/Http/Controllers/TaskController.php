@@ -229,6 +229,17 @@ class TaskController extends Controller
                 ->where('board_id', $validated['board_id'])
                 ->firstOrFail();
 
+            // Validate that the assignee is a member of the board's team
+            if (!empty($validated['assignee_id'])) {
+                $assignee = \App\Models\User::findOrFail($validated['assignee_id']);
+                if ($board->team_id && !$board->team->isMember($assignee)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignee must be a member of the board\'s team.'
+                    ], 422);
+                }
+            }
+
             PerformanceMonitor::endTimer('task_authorization_checks');
 
             // Get position and create task
@@ -299,7 +310,7 @@ class TaskController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create task: ' . $e->getMessage()
+                'message' => 'Failed to create task'
             ], 500);
         }
     }
@@ -340,7 +351,7 @@ class TaskController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch task: ' . $e->getMessage()
+                'message' => 'Failed to fetch task'
             ], 500);
         }
     }
@@ -362,6 +373,17 @@ class TaskController extends Controller
                 'due_date' => 'nullable|date',
                 'completed_at' => 'nullable|date',
             ]);
+
+            // Validate that the assignee is a member of the board's team
+            if (!empty($validated['assignee_id'])) {
+                $assignee = \App\Models\User::findOrFail($validated['assignee_id']);
+                if ($task->board->team_id && !$task->board->team->isMember($assignee)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignee must be a member of the board\'s team.'
+                    ], 422);
+                }
+            }
 
             $oldValues = $task->only(array_keys($validated));
             
@@ -408,7 +430,7 @@ class TaskController extends Controller
             
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update task: ' . $e->getMessage()
+                'message' => 'Failed to update task'
             ], 500);
         }
     }
