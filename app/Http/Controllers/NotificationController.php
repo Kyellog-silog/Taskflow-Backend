@@ -48,7 +48,7 @@ class NotificationController extends Controller
             PerformanceMonitor::logQueryStats('notification_index_error');
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch notifications: ' . $e->getMessage()
+                'message' => 'Failed to fetch notifications'
             ], 500);
         }
     }
@@ -89,19 +89,17 @@ class NotificationController extends Controller
             PerformanceMonitor::logQueryStats('notification_unread_count_error');
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch unread count: ' . $e->getMessage()
+                'message' => 'Failed to fetch unread count'
             ], 500);
         }
     }
 
-    public function markRead(Request $request, Notification $notification): JsonResponse
+    public function markRead(Request $request, int $notification): JsonResponse
     {
-        if ($notification->user_id !== $request->user()->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Not authorized to modify this notification'
-            ], 403);
-        }
+        $notification = Notification::where('id', $notification)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
         $notification->update(['read_at' => now()]);
         return response()->json([
             'success' => true,

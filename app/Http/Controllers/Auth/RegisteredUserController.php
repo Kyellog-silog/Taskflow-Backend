@@ -35,7 +35,7 @@ class RegisteredUserController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->string('password')),
+                'password' => $request->string('password'), // 'hashed' cast on User model handles bcrypt
             ]);
 
             event(new Registered($user));
@@ -166,6 +166,8 @@ class RegisteredUserController extends Controller
             }
         }
 
+        $changingPassword = $request->filled('password');
+
         // Update user data
         $user->update([
             'name' => $request->name,
@@ -174,8 +176,13 @@ class RegisteredUserController extends Controller
             'phone' => $request->phone,
             'location' => $request->location,
             'website' => $request->website,
-            'password' => $request->filled('password') ? Hash::make($request->password) : $user->password,
+            'password' => $changingPassword ? $request->password : $user->password, // 'hashed' cast handles bcrypt
         ]);
+
+        // Revoke all existing tokens when password is changed
+        if ($changingPassword) {
+            $user->tokens()->delete();
+        }
 
         return response()->json([
             'success' => true,

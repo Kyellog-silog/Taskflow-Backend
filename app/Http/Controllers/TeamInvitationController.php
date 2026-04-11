@@ -42,8 +42,8 @@ class TeamInvitationController extends Controller
             'team_id' => $team->id
         ]);
 
-        // Check if user is already a team member
-        $existingUser = User::where('email', $validated['email'])->first();
+        // Check if user is already a team member (case-insensitive email lookup)
+        $existingUser = User::whereRaw('LOWER(email) = LOWER(?)', [$validated['email']])->first();
         if ($existingUser && $team->isMember($existingUser)) {
             return response()->json([
                 'success' => false,
@@ -64,7 +64,7 @@ class TeamInvitationController extends Controller
             if ($existingInvitation) {
                 $invitation = $existingInvitation;
                 $invitation->update([
-                    'token' => (string) \Illuminate\Support\Str::uuid(), // Use UUID like model boot method
+                    'token' => \Illuminate\Support\Str::random(64),
                     'invited_by' => $request->user()->id,
                     'role' => $validated['role'],
                     'created_at' => now(), // Reset invitation timestamp
