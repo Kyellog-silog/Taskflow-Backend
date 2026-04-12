@@ -26,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // API-only: always return JSON, never try to render HTML views
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-            return response()->json([
+            return new \Illuminate\Http\JsonResponse([
                 'message' => $e->getMessage() ?: 'Server Error',
             ], $status);
         });
