@@ -23,5 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // API-only: always return JSON, never try to render HTML views
+        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+            return response()->json([
+                'message' => $e->getMessage() ?: 'Server Error',
+            ], $status);
+        });
     })->create();
