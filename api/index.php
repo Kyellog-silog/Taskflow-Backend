@@ -12,7 +12,8 @@ define('LARAVEL_START', microtime(true));
 
 // Bootstrap writable directories in /tmp for Vercel's read-only filesystem
 $tmpStorage = '/tmp/storage';
-$tmpBootstrapCache = '/tmp/bootstrap/cache';
+$tmpBootstrapPath = '/tmp/bootstrap';       // passed to useBootstrapPath()
+$tmpBootstrapCache = '/tmp/bootstrap/cache'; // the cache sub-directory
 
 foreach ([
     "$tmpStorage/framework/cache/data",
@@ -27,7 +28,7 @@ foreach ([
     }
 }
 
-// Copy bootstrap cache files to /tmp if they exist in the project
+// Copy bootstrap cache files to /tmp so PackageManifest can read (and write) them
 $projectBootstrapCache = __DIR__ . '/../bootstrap/cache';
 foreach (['packages.php', 'services.php'] as $cacheFile) {
     $src = "$projectBootstrapCache/$cacheFile";
@@ -43,6 +44,21 @@ $app = require_once __DIR__ . '/../bootstrap/app.php';
 
 // Redirect storage to /tmp so Laravel can write at runtime
 $app->useStoragePath($tmpStorage);
+
+// Redirect the bootstrap path so PackageManifest reads/writes from /tmp
+// useBootstrapPath() takes the *parent* of cache/ (i.e. /tmp/bootstrap, not /tmp/bootstrap/cache)
+$app->useBootstrapPath($tmpBootstrapPath);
+
+// Re-bind PackageManifest so it uses the updated getCachedPackagesPath()
+// (which now resolves to /tmp/bootstrap/cache/packages.php)
+$app->instance(
+    \Illuminate\Foundation\PackageManifest::class,
+    new \Illuminate\Foundation\PackageManifest(
+        new \Illuminate\Filesystem\Filesystem,
+        $app->basePath(),
+        $app->getCachedPackagesPath()
+    )
+);
 
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
