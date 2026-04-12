@@ -46,7 +46,7 @@ return [
         '#^https://taskflow[a-z0-9\-]*\.vercel\.app$#',
     ],
 
-    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-XSRF-TOKEN', 'Accept'],
+    'allowed_headers' => ['Content-Type', 'Authorization', 'X-Requested-With', 'X-XSRF-TOKEN', 'X-CSRF-TOKEN', 'Accept'],
 
     'exposed_headers' => [],
 
