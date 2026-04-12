@@ -94,6 +94,13 @@ $app->instance(
 
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 
+// Fix Symfony base-path detection for Vercel's subdirectory entry point.
+// $SCRIPT_NAME is '/api/index.php', so Symfony strips '/api' from every
+// request URI — turning '/api/auth/register' into '/auth/register' → 404.
+// Pretending the script lives at root makes Symfony preserve the full path.
+$_SERVER['SCRIPT_NAME'] = '/index.php';
+$_SERVER['PHP_SELF']    = '/index.php';
+
 $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
