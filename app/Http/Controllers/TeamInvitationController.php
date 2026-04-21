@@ -64,7 +64,7 @@ class TeamInvitationController extends Controller
             if ($existingInvitation) {
                 $invitation = $existingInvitation;
                 $invitation->update([
-                    'token' => \Illuminate\Support\Str::random(64),
+                    'token' => (string) \Illuminate\Support\Str::uuid(),
                     'invited_by' => $request->user()->id,
                     'role' => $validated['role'],
                     'created_at' => now(), // Reset invitation timestamp

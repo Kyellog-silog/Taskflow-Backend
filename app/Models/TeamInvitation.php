@@ -61,7 +61,7 @@ class TeamInvitation extends Model
 
         static::creating(function ($invitation) {
             if (empty($invitation->token)) {
-                $invitation->token = Str::random(64);
+                $invitation->token = (string) Str::uuid();
             }
             
             if (empty($invitation->expires_at)) {
