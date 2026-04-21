@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [
+            \App\Http\Middleware\InjectBearerFromQueryToken::class,
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
@@ -24,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // API-only: always return JSON, never try to render HTML views
-        $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+        $exceptions->render(function (\Throwable $e) {
             if ($e instanceof \Illuminate\Auth\AuthenticationException) {
                 return new \Illuminate\Http\JsonResponse(['message' => 'Unauthenticated.'], 401);
             }

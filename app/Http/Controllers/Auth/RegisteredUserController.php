@@ -47,11 +47,13 @@ class RegisteredUserController extends Controller
 
             DB::commit();
 
-            // Return user data for frontend
+            $token = $user->createToken('auth_token')->plainTextToken;
+
             return response()->json([
                 'success' => true,
                 'data' => [
                     'user' => $user,
+                    'token' => $token,
                     'message' => 'Registration successful! You have been automatically added to any teams you were invited to.'
                 ]
             ]);

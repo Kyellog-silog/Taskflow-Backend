@@ -19,11 +19,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // Return user data for frontend
+        $token = $request->user()->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => $request->user()
+                'user' => $request->user(),
+                'token' => $token,
             ]
         ]);
     }
@@ -33,6 +35,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): Response
     {
+        // Revoke the current API token if present
+        if ($request->user()) {
+            $request->user()->currentAccessToken()?->delete();
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
