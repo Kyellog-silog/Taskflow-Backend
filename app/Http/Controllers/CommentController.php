@@ -9,6 +9,7 @@ use App\Http\Controllers\EventsController;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth as AuthFacade;
 
 class CommentController extends Controller
@@ -88,7 +89,9 @@ class CommentController extends Controller
                     'timestamp' => now()->toISOString(),
                 ]);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+            Log::warning('Failed to create comment.created notifications', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+        }
 
         $fresh = $comment->load(['user', 'replies.user']);
         return response()->json([

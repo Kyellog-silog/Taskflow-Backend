@@ -12,12 +12,13 @@ class NotificationResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type,
             'data' => [
-                'task_id' => $this->data['task_id'] ?? null,
-                'board_id' => $this->data['board_id'] ?? null,
+                'task_id'    => $this->data['task_id']    ?? null,
+                'board_id'   => $this->data['board_id']   ?? null,
                 'comment_id' => $this->data['comment_id'] ?? null,
-                'actor_id' => $this->data['actor_id'] ?? null,
+                'actor_id'   => $this->data['actor_id']   ?? null,
+                'actor_name' => $this->actor_name         ?? null,
             ],
-            'read_at' => $this->read_at,
+            'read_at'    => $this->read_at,
             'created_at' => $this->created_at,
         ];
     }

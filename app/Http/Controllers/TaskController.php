@@ -702,8 +702,10 @@ class TaskController extends Controller
                         'timestamp' => now()->toISOString(),
                     ]);
                 }
-            } catch (\Throwable $e) {}
-            
+            } catch (\Throwable $e) {
+                Log::warning('Failed to create task.completed notifications', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+            }
+
             $fresh = $task->fresh(['assignee', 'createdBy', 'comments.user', 'board', 'column']);
             return response()->json([
                 'success' => true,
@@ -785,7 +787,9 @@ class TaskController extends Controller
                         'timestamp' => now()->toISOString(),
                     ]);
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+                Log::warning('Failed to create task.assigned notification', ['task_id' => $task->id, 'error' => $e->getMessage()]);
+            }
             
             $fresh = $task->fresh(['assignee', 'createdBy', 'comments.user', 'board', 'column']);
             return response()->json([
