@@ -39,6 +39,7 @@ Route::prefix('auth')->group(function () {
 Route::get('/invitations/{token}', [TeamInvitationController::class, 'show']);
 Route::post('/invitations/{token}/accept', [TeamInvitationController::class, 'accept'])->middleware('auth:sanctum');
 Route::post('/invitations/{token}/reject', [TeamInvitationController::class, 'reject']);
+Route::post('/invitations/{token}/register-and-accept', [TeamInvitationController::class, 'registerAndAccept'])->middleware('throttle:5,1');
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {

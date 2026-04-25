@@ -303,6 +303,87 @@ class TeamInvitationController extends Controller
     }
 
     /**
+     * Register a new user and accept the invitation atomically (public endpoint)
+     */
+    public function registerAndAccept(Request $request, string $token): JsonResponse
+    {
+        $invitation = TeamInvitation::where('token', $token)->with(['team', 'inviter'])->first();
+
+        if (!$invitation) {
+            return response()->json(['success' => false, 'message' => 'Invalid invitation token'], 404);
+        }
+
+        if (!$invitation->isPending()) {
+            $status = $invitation->isExpired() ? 'expired' : $invitation->status;
+            return response()->json(['success' => false, 'message' => "Invitation is {$status}"], 400);
+        }
+
+        // If an account already exists the user must log in instead
+        $existingUser = User::whereRaw('LOWER(email) = LOWER(?)', [$invitation->email])->first();
+        if ($existingUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An account already exists with this email address. Please log in to accept.',
+                'existing_user' => true,
+            ], 409);
+        }
+
+        $validated = $request->validate([
+            'name'                  => 'required|string|min:2|max:100',
+            'password'              => 'required|string|min:8|confirmed',
+            'password_confirmation' => 'required',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $user = User::create([
+                'name'     => $validated['name'],
+                'email'    => $invitation->email,   // always from DB — never user-supplied
+                'password' => Hash::make($validated['password']),
+            ]);
+
+            $invitation->team->addMember($user, $invitation->role);
+            $invitation->accept();
+            $this->addUserToTeamBoards($user, $invitation->team);
+
+            $authToken = $user->createToken('invitation-acceptance')->plainTextToken;
+
+            DB::commit();
+
+            Log::info('New user registered via invitation', [
+                'user_id'  => $user->id,
+                'team_id'  => $invitation->team->id,
+                'role'     => $invitation->role,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Account created and team joined successfully!',
+                'data'    => [
+                    'token' => $authToken,
+                    'user'  => [
+                        'id'    => $user->id,
+                        'name'  => $user->name,
+                        'email' => $user->email,
+                    ],
+                    'team'        => ['id' => $invitation->team->id, 'name' => $invitation->team->name],
+                    'role'        => $invitation->role,
+                    'boards_count' => $invitation->team->boards()->count(),
+                ],
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Failed to register and accept invitation', [
+                'token' => $token,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Failed to create account. Please try again.'], 500);
+        }
+    }
+
+    /**
      * Get invitation details (for preview before accepting/rejecting)
      */
     public function show(string $token): JsonResponse
@@ -321,16 +402,17 @@ class TeamInvitationController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'id' => $invitation->id,
-                'team_name' => $invitation->team->name,
+                'id'               => $invitation->id,
+                'email'            => $invitation->email,
+                'team_name'        => $invitation->team->name,
                 'team_description' => $invitation->team->description,
-                'role' => $invitation->role,
-                'status' => $invitation->status,
-                'expires_at' => $invitation->expires_at,
-                'invited_by' => $invitation->inviter->name,
-                'team_owner' => $invitation->team->owner->name,
-                'is_expired' => $invitation->isExpired(),
-                'is_pending' => $invitation->isPending(),
+                'role'             => $invitation->role,
+                'status'           => $invitation->status,
+                'expires_at'       => $invitation->expires_at,
+                'invited_by'       => $invitation->inviter->name,
+                'team_owner'       => $invitation->team->owner->name,
+                'is_expired'       => $invitation->isExpired(),
+                'is_pending'       => $invitation->isPending(),
             ]
         ]);
     }
