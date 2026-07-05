@@ -1,25 +1,24 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
-use App\Http\Controllers\TaskController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\BoardController;
-use App\Http\Controllers\TeamController;
-use App\Http\Controllers\TeamInvitationController;
-use App\Http\Controllers\EventsController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\EventsController;
+use App\Http\Controllers\LabelController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\UserController;
 use App\Models\Task;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,27 +47,37 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
         Route::post('/email/verification-notification', [EmailVerificationNotificationController::class, 'store']);
     });
-    
+
     // User routes
     Route::get('/user', [UserController::class, 'show']);
-    
+
     Route::put('/user/profile', [RegisteredUserController::class, 'updateProfile']);
-    
+
     // Password routes
     Route::post('/password/change', [App\Http\Controllers\PasswordController::class, 'change']);
     Route::post('/password/set-initial', [App\Http\Controllers\PasswordController::class, 'setInitial']);
-    
 
     // Team routes
     Route::apiResource('teams', TeamController::class);
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);
     Route::delete('/teams/{team}/members/{user}', [TeamController::class, 'removeMember']);
     Route::put('/teams/{team}/members/{user}/role', [TeamController::class, 'updateMemberRole']);
-    
+
     // Team invitation routes
     Route::post('/teams/{team}/invite', [TeamInvitationController::class, 'invite'])->middleware('throttle:10,1');
     Route::get('/teams/{team}/invitations', [TeamInvitationController::class, 'index']);
     Route::delete('/teams/{team}/invitations/{invitation}', [TeamInvitationController::class, 'destroy']);
+
+    // Project routes (Jira-style projects — see JIRA_EVOLUTION_PLAN.md Phase 1)
+    Route::apiResource('projects', ProjectController::class);
+    Route::get('/projects/{project}/boards', [ProjectController::class, 'boards']);
+    Route::get('/projects/{project}/labels', [LabelController::class, 'index']);
+    Route::post('/projects/{project}/labels', [LabelController::class, 'store']);
+    Route::put('/labels/{label}', [LabelController::class, 'update']);
+    Route::delete('/labels/{label}', [LabelController::class, 'destroy']);
+
+    // Issue-key deep link (e.g. GET /issues/TF-123)
+    Route::get('/issues/{issueKey}', [TaskController::class, 'showByKey']);
 
     // Board routes
     Route::apiResource('boards', BoardController::class);
@@ -77,7 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/boards/{board}/teams', [BoardController::class, 'getTeams']);
     Route::post('/boards/{board}/teams/{team}', [BoardController::class, 'addTeam']);
     Route::delete('/boards/{board}/teams/{team}', [BoardController::class, 'removeTeam']);
-    
+
     // Board archiving functionality
     Route::post('boards/{board}/archive', [BoardController::class, 'archive']);
     Route::post('boards/{board}/unarchive', [BoardController::class, 'unarchive']);
@@ -97,11 +106,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tasks/{task}/comments/{comment}', [CommentController::class, 'destroy']);
 
     // Task activities
-    Route::get('/tasks/{task}/activities', function(Task $task) {
+    Route::get('/tasks/{task}/activities', function (Task $task) {
         Gate::authorize('view', $task);
+
         return response()->json([
             'success' => true,
-            'data' => $task->activities()->with('user')->latest()->get()
+            'data' => $task->activities()->with('user')->latest()->get(),
         ]);
     });
 
@@ -122,7 +132,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
 
     // File attachment routes
-    Route::post('/tasks/{task}/attachments', function() {
+    Route::post('/tasks/{task}/attachments', function () {
         return response()->json(['message' => 'File upload not implemented yet']);
     });
 });
@@ -142,10 +152,7 @@ Route::get('/health', function () {
     ]);
 });
 
-
 // CSRF token endpoints for SPA authentication
 Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 });
-
-

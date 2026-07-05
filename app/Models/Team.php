@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $members
  * @property-read int|null $members_count
  * @property-read \App\Models\User $owner
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team forUser($userId)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team newQuery()
@@ -30,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team whereName($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team whereOwnerId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class Team extends Model
@@ -57,12 +59,17 @@ class Team extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'team_members')
-                    ->withPivot(['role', 'joined_at']);
+            ->withPivot(['role', 'joined_at']);
     }
 
     public function boards(): HasMany
     {
         return $this->hasMany(Board::class);
+    }
+
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
     }
 
     public function invitations(): HasMany
@@ -78,9 +85,9 @@ class Team extends Model
     public function scopeForUser($query, $userId)
     {
         return $query->where('owner_id', $userId)
-                    ->orWhereHas('members', function ($q) use ($userId) {
-                        $q->where('user_id', $userId);
-                    });
+            ->orWhereHas('members', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
     }
 
     public function addMember(User $user, string $role = 'member'): void
@@ -89,7 +96,7 @@ class Team extends Model
             $user->id => [
                 'role' => $role,
                 'joined_at' => now(),
-            ]
+            ],
         ]);
     }
 
@@ -115,12 +122,14 @@ class Team extends Model
         }
 
         $member = $this->members->find($user->id);
+
         return $member && $member->pivot->role === 'admin';
     }
 
     public function isViewer(User $user): bool
     {
         $member = $this->members->find($user->id);
+
         return $member && $member->pivot->role === 'viewer';
     }
 
@@ -132,13 +141,13 @@ class Team extends Model
     public function canCreateBoards(User $user): bool
     {
         // Only admins and regular members can create boards, not viewers
-        return $this->isOwner($user) || $this->isAdmin($user) || ($this->isMember($user) && !$this->isViewer($user));
+        return $this->isOwner($user) || $this->isAdmin($user) || ($this->isMember($user) && ! $this->isViewer($user));
     }
 
     public function canEditTasks(User $user): bool
     {
         // Viewers can only view, not edit
-        return $this->isOwner($user) || $this->isAdmin($user) || ($this->isMember($user) && !$this->isViewer($user));
+        return $this->isOwner($user) || $this->isAdmin($user) || ($this->isMember($user) && ! $this->isViewer($user));
     }
 
     public function getUserRole(User $user): ?string
@@ -148,6 +157,7 @@ class Team extends Model
         }
 
         $member = $this->members->find($user->id);
+
         return $member ? $member->pivot->role : null;
     }
 }

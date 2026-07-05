@@ -32,7 +32,17 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof \Illuminate\Auth\Access\AuthorizationException) {
                 return new \Illuminate\Http\JsonResponse(['message' => 'This action is unauthorized.'], 403);
             }
+            if ($e instanceof \Illuminate\Validation\ValidationException) {
+                return new \Illuminate\Http\JsonResponse([
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ], $e->status);
+            }
+            if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+                return new \Illuminate\Http\JsonResponse(['message' => 'Not found.'], 404);
+            }
             $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+
             return new \Illuminate\Http\JsonResponse([
                 'message' => $e->getMessage() ?: 'Server Error',
             ], $status);

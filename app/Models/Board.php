@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Board extends Model
 {
     use HasFactory, SoftDeletes;
-    
+
     protected $fillable = [
         'name',
         'description',
@@ -38,31 +38,54 @@ class Board extends Model
     }
 
     /**
+     * Get the project this board belongs to.
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class)->withDefault();
+    }
+
+    /**
+     * Every board must live in a project so its tasks get issue keys.
+     * Falls back to the team's (or owner's personal) default project,
+     * creating one on first use.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function ($board) {
+            if (! $board->project_id) {
+                $board->project_id = Project::resolveDefaultProjectId($board->team_id, $board->created_by);
+            }
+        });
+    }
+
+    /**
      * Get the user who created the board.
      */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
     /**
      * Get the completion percentage
      */
     public function getCompletionPercentageAttribute(): int
-{
-    $totalTasks = $this->tasks()->count();
-    if ($totalTasks === 0) {
-        return 0;
+    {
+        $totalTasks = $this->tasks()->count();
+        if ($totalTasks === 0) {
+            return 0;
+        }
+
+        // Get tasks in the "Done" column
+        $completedTasks = $this->tasks()
+            ->whereHas('column', function ($query) {
+                $query->where('name', 'Done');
+            })
+            ->count();
+
+        return (int) round(($completedTasks / $totalTasks) * 100);
     }
-    
-    // Get tasks in the "Done" column
-    $completedTasks = $this->tasks()
-        ->whereHas('column', function ($query) {
-            $query->where('name', 'Done');
-        })
-        ->count();
-    
-    return (int) round(($completedTasks / $totalTasks) * 100);
-}
 
     /**
      * Get the columns of the board, ordered by position.
@@ -97,13 +120,13 @@ class Board extends Model
     public function scopeForUser($query, $userId)
     {
         return $query->select('id', 'name', 'description', 'team_id', 'created_by', 'archived_at', 'last_visited_at', 'created_at', 'updated_at')
-            ->where(function($q) use ($userId) {
-                $q->where(function($personalQuery) use ($userId) {
+            ->where(function ($q) use ($userId) {
+                $q->where(function ($personalQuery) use ($userId) {
                     $personalQuery->where('created_by', $userId)->whereNull('team_id');
                 })
-                ->orWhereHas('team', function ($teamQuery) use ($userId) {
-                    $teamQuery->forUser($userId);
-                });
+                    ->orWhereHas('team', function ($teamQuery) use ($userId) {
+                        $teamQuery->forUser($userId);
+                    });
             });
     }
 
@@ -129,8 +152,8 @@ class Board extends Model
     public function scopeRecentlyVisited($query, $limit = 5)
     {
         return $query->whereNotNull('last_visited_at')
-                    ->orderBy('last_visited_at', 'desc')
-                    ->limit($limit);
+            ->orderBy('last_visited_at', 'desc')
+            ->limit($limit);
     }
 
     /**
@@ -138,7 +161,7 @@ class Board extends Model
      */
     public function isArchived(): bool
     {
-        return !is_null($this->archived_at);
+        return ! is_null($this->archived_at);
     }
 
     /**
@@ -171,10 +194,10 @@ class Board extends Model
     public function canUserAccess(User $user): bool
     {
         // Personal boards are only accessible by their creator
-        if (!$this->team_id) {
+        if (! $this->team_id) {
             return $this->created_by == $user->id;
         }
-        
+
         // Team boards are accessible by all team members (including viewers)
         return $this->team->isMember($user);
     }
@@ -185,10 +208,10 @@ class Board extends Model
     public function canUserManage(User $user): bool
     {
         // Personal boards are only manageable by their creator
-        if (!$this->team_id) {
+        if (! $this->team_id) {
             return $this->created_by == $user->id;
         }
-        
+
         // Team boards are manageable by team admins and the board creator (but not viewers)
         return $this->team->isAdmin($user) || $this->createdBy?->id === $user->id;
     }
@@ -199,10 +222,10 @@ class Board extends Model
     public function canUserEditTasks(User $user): bool
     {
         // Personal boards can be edited by their creator
-        if (!$this->team_id) {
+        if (! $this->team_id) {
             return $this->created_by == $user->id;
         }
-        
+
         // Team boards: viewers cannot edit tasks
         return $this->team->canEditTasks($user);
     }
@@ -221,10 +244,10 @@ class Board extends Model
     public function getUserRole(User $user): ?string
     {
         // Personal boards - creator is owner
-        if (!$this->team_id) {
+        if (! $this->team_id) {
             return $this->created_by == $user->id ? 'owner' : null;
         }
-        
+
         // Team boards - get role from team
         return $this->team->getUserRole($user);
     }
@@ -235,10 +258,10 @@ class Board extends Model
     public function isUserViewer(User $user): bool
     {
         // Personal boards don't have viewers
-        if (!$this->team_id) {
+        if (! $this->team_id) {
             return false;
         }
-        
+
         return $this->team->isViewer($user);
     }
 }

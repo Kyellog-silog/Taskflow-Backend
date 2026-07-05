@@ -14,6 +14,12 @@ class TaskResource extends JsonResource
             'description' => $this->description,
             'board_id' => $this->board_id,
             'column_id' => $this->column_id,
+            'project_id' => $this->project_id,
+            'issue_key' => $this->issue_key,
+            'issue_type' => $this->issue_type,
+            'story_points' => $this->story_points,
+            'parent_id' => $this->parent_id,
+            'epic_id' => $this->epic_id,
             'assignee_id' => $this->assignee_id,
             'priority' => $this->priority,
             'due_date' => $this->due_date,
@@ -21,8 +27,8 @@ class TaskResource extends JsonResource
             'completed_at' => $this->completed_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'assignee' => $this->whenLoaded('assignee', fn() => new UserSummaryResource($this->assignee)),
-            'createdBy' => $this->whenLoaded('createdBy', fn() => new UserSummaryResource($this->createdBy)),
+            'assignee' => $this->whenLoaded('assignee', fn () => new UserSummaryResource($this->assignee)),
+            'createdBy' => $this->whenLoaded('createdBy', fn () => new UserSummaryResource($this->createdBy)),
             'board' => $this->whenLoaded('board', function () {
                 return [
                     'id' => $this->board?->id,
@@ -36,6 +42,7 @@ class TaskResource extends JsonResource
                 ];
             }),
             'comments' => TaskCommentResource::collection($this->whenLoaded('comments')),
+            'labels' => LabelResource::collection($this->whenLoaded('labels')),
         ];
     }
 }
