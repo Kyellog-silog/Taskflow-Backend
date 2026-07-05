@@ -15,6 +15,7 @@ class TaskResource extends JsonResource
             'board_id' => $this->board_id,
             'column_id' => $this->column_id,
             'project_id' => $this->project_id,
+            'status_id' => $this->status_id,
             'issue_key' => $this->issue_key,
             'issue_type' => $this->issue_type,
             'story_points' => $this->story_points,

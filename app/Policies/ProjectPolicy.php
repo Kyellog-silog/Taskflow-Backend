@@ -31,4 +31,9 @@ class ProjectPolicy
     {
         return $project->canEdit($user);
     }
+
+    public function manageWorkflow(User $user, Project $project): bool
+    {
+        return $project->canManage($user);
+    }
 }

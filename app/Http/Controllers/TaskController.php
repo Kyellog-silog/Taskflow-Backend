@@ -6,8 +6,10 @@ use App\Models\Board;
 use App\Models\BoardColumn;
 use App\Models\Label;
 use App\Models\Notification;
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskActivity;
+use App\Models\Transition;
 use App\Services\PerformanceMonitor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -347,6 +349,112 @@ class TaskController extends Controller
     }
 
     /**
+     * List the workflow transitions available to the current user from this
+     * task's status (wildcards included, role-filtered).
+     */
+    public function transitions(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('view', $task->board);
+
+        $project = $task->project_id ? Project::find($task->project_id) : null;
+        if (! $project) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        $role = $project->userRole($request->user());
+        $available = $project->availableTransitionsFor($task->status_id, $role);
+
+        return response()->json([
+            'success' => true,
+            'data' => \App\Http\Resources\TransitionResource::collection($available),
+        ]);
+    }
+
+    /**
+     * Execute a workflow transition: validates the edge and the user's role,
+     * then moves the task to the first column on its board mapped to the
+     * target status.
+     */
+    public function transition(Request $request, Task $task): JsonResponse
+    {
+        Gate::authorize('move', $task);
+
+        $validated = $request->validate([
+            'transition_id' => 'required|integer|exists:transitions,id',
+        ]);
+
+        $transitionModel = Transition::with('toStatus')->findOrFail($validated['transition_id']);
+
+        if ($transitionModel->project_id !== $task->project_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transition does not belong to this task\'s project.',
+            ], 422);
+        }
+
+        if ($transitionModel->from_status_id !== null && $transitionModel->from_status_id !== $task->status_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transition is not available from the task\'s current status.',
+            ], 422);
+        }
+
+        $project = Project::findOrFail($task->project_id);
+        $role = $project->userRole($request->user());
+        if (! $transitionModel->roleAllowed($role)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your role is not allowed to use this transition.',
+            ], 403);
+        }
+
+        $targetColumn = BoardColumn::where('board_id', $task->board_id)
+            ->where('status_id', $transitionModel->to_status_id)
+            ->orderBy('position')
+            ->first();
+
+        if (! $targetColumn) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No column on this board is mapped to the target status.',
+            ], 422);
+        }
+
+        $oldStatusId = $task->status_id;
+
+        DB::transaction(function () use ($task, $targetColumn, $transitionModel, $request, $oldStatusId) {
+            $position = Task::where('column_id', $targetColumn->id)->count();
+            $task->moveToColumn($targetColumn->id, $position, $request->user());
+            $task->update(['status_id' => $transitionModel->to_status_id]);
+
+            TaskActivity::create([
+                'task_id' => $task->id,
+                'user_id' => $request->user()->id,
+                'action' => 'transitioned',
+                'description' => 'Task transitioned to '.$transitionModel->toStatus->name,
+                'old_values' => ['status_id' => $oldStatusId],
+                'new_values' => ['status_id' => $transitionModel->to_status_id],
+            ]);
+        });
+
+        try {
+            EventsController::queueEvent('task.moved', [
+                'boardId' => $task->board_id,
+                'taskId' => $task->id,
+                'toColumn' => $targetColumn->id,
+                'userId' => Auth::id(),
+                'timestamp' => now()->toISOString(),
+            ]);
+        } catch (\Throwable $e) {
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => new \App\Http\Resources\TaskResource($task->fresh(['assignee', 'createdBy', 'board', 'column', 'labels'])),
+        ]);
+    }
+
+    /**
      * Resolve a task by its immutable issue key (e.g. "TF-123").
      */
     public function showByKey(string $issueKey): JsonResponse
@@ -675,6 +783,23 @@ class TaskController extends Controller
                 ->firstOrFail();
             PerformanceMonitor::endTimer('task_move_authorization');
 
+            // Drag-and-drop is a workflow transition: the server re-validates
+            // against the project's transition graph regardless of what the
+            // client pre-filtered
+            if ($task->project_id && $column->status_id && $task->status_id !== $column->status_id) {
+                $project = Project::find($task->project_id);
+                $role = $project?->userRole($request->user());
+                if ($project && ! $project->allowsTransition($task->status_id, $column->status_id, $role)) {
+                    $allowed = $project->availableTransitionsFor($task->status_id, $role);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This move is not allowed by the project workflow.',
+                        'allowed_status_ids' => $allowed->pluck('to_status_id'),
+                    ], 422);
+                }
+            }
+
             $oldColumnId = $task->column_id;
             $oldPosition = $task->position;
 
@@ -710,10 +835,11 @@ class TaskController extends Controller
                 }
             }
 
-            // Update task position
+            // Update task position (status follows the destination column)
             $task->update([
                 'column_id' => $validated['column_id'],
                 'position' => $validated['position'],
+                'status_id' => $column->status_id ?? $task->status_id,
             ]);
 
             // Log activity
@@ -775,7 +901,7 @@ class TaskController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to move task: '.$e->getMessage(),
+                'message' => 'Failed to move task',
             ], 500);
         }
     }

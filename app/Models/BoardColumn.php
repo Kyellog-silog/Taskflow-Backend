@@ -34,8 +34,6 @@ class BoardColumn extends Model
 
     /**
      * Get the board that owns the column.
-     *
-     * @return BelongsTo
      */
     public function board(): BelongsTo
     {
@@ -43,10 +41,32 @@ class BoardColumn extends Model
     }
 
     /**
+     * Get the workflow status this column maps to.
+     */
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(Status::class);
+    }
+
+    /**
+     * Columns are views onto workflow statuses: every new column maps to the
+     * project status matching its name (created on first use).
+     */
+    protected static function booted(): void
+    {
+        static::creating(function ($column) {
+            if (! $column->status_id && $column->board_id) {
+                $projectId = Board::whereKey($column->board_id)->value('project_id');
+                if ($projectId) {
+                    $column->status_id = Status::resolveForColumn($projectId, (string) $column->name);
+                }
+            }
+        });
+    }
+
+    /**
      * Get the tasks for the column, ordered by position.
      * Explicitly specify the foreign key to avoid Laravel's default assumption.
-     *
-     * @return HasMany
      */
     public function tasks(): HasMany
     {
@@ -55,8 +75,6 @@ class BoardColumn extends Model
 
     /**
      * Get only active tasks for the column.
-     *
-     * @return HasMany
      */
     public function activeTasks(): HasMany
     {
@@ -67,8 +85,6 @@ class BoardColumn extends Model
 
     /**
      * Count the tasks in this column.
-     *
-     * @return int
      */
     public function getTaskCountAttribute(): int
     {
@@ -77,9 +93,6 @@ class BoardColumn extends Model
 
     /**
      * Check if this column has reached its maximum task limit.
-     *
-     * @param int|null $maxTasks
-     * @return bool
      */
     public function isAtCapacity(?int $maxTasks = null): bool
     {
@@ -97,7 +110,7 @@ class BoardColumn extends Model
     /**
      * Scope a query to order columns by position.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeOrdered($query)
@@ -107,13 +120,11 @@ class BoardColumn extends Model
 
     /**
      * Reorder task positions when a task is moved or removed.
-     *
-     * @return void
      */
     public function reorderTasks(): void
     {
         $tasks = $this->tasks()->orderBy('position')->get();
-        
+
         foreach ($tasks as $index => $task) {
             $task->update(['position' => $index]);
         }
@@ -121,9 +132,6 @@ class BoardColumn extends Model
 
     /**
      * Move this column to a new position and adjust other columns.
-     *
-     * @param int $newPosition
-     * @return bool
      */
     public function moveTo(int $newPosition): bool
     {
@@ -132,19 +140,19 @@ class BoardColumn extends Model
         }
 
         $oldPosition = $this->position;
-        
+
         // Get all columns from the same board
         $columns = $this->board->columns()->orderBy('position')->get();
         $maxPosition = $columns->count() - 1;
-        
+
         // Ensure new position is valid
         $newPosition = min($newPosition, $maxPosition);
-        
+
         // If position doesn't change, do nothing
         if ($oldPosition === $newPosition) {
             return true;
         }
-        
+
         // Update positions of all affected columns
         if ($oldPosition < $newPosition) {
             // Moving right: decrement positions of columns between old and new
@@ -161,10 +169,10 @@ class BoardColumn extends Model
                 }
             }
         }
-        
+
         // Update this column's position
         $this->update(['position' => $newPosition]);
-        
+
         return true;
     }
 }

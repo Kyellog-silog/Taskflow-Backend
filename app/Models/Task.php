@@ -39,6 +39,7 @@ class Task extends Model
         'story_points',
         'parent_id',
         'epic_id',
+        'status_id',
     ];
 
     /**
@@ -460,6 +461,11 @@ class Task extends Model
                 if ($project) {
                     $task->issue_key = $project->nextIssueKey();
                 }
+            }
+
+            // Workflow status follows the column the task lands in
+            if (! $task->status_id && $task->column_id) {
+                $task->status_id = BoardColumn::whereKey($task->column_id)->value('status_id');
             }
         });
 

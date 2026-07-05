@@ -12,9 +12,11 @@ use App\Http\Controllers\LabelController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\StatusController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TeamInvitationController;
+use App\Http\Controllers\TransitionController;
 use App\Http\Controllers\UserController;
 use App\Models\Task;
 use Illuminate\Support\Facades\Gate;
@@ -78,6 +80,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Issue-key deep link (e.g. GET /issues/TF-123)
     Route::get('/issues/{issueKey}', [TaskController::class, 'showByKey']);
+
+    // Workflow: statuses + transitions (Phase 2 — see JIRA_EVOLUTION_PLAN.md)
+    Route::get('/projects/{project}/statuses', [StatusController::class, 'index']);
+    Route::post('/projects/{project}/statuses', [StatusController::class, 'store']);
+    Route::put('/statuses/{status}', [StatusController::class, 'update']);
+    Route::delete('/statuses/{status}', [StatusController::class, 'destroy']);
+    Route::get('/projects/{project}/transitions', [TransitionController::class, 'index']);
+    Route::post('/projects/{project}/transitions', [TransitionController::class, 'store']);
+    Route::delete('/transitions/{transition}', [TransitionController::class, 'destroy']);
+    Route::get('/tasks/{task}/transitions', [TaskController::class, 'transitions']);
+    Route::post('/tasks/{task}/transition', [TaskController::class, 'transition'])->middleware('throttle:60,1');
 
     // Board routes
     Route::apiResource('boards', BoardController::class);

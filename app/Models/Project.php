@@ -52,6 +52,91 @@ class Project extends Model
         return $this->hasMany(Label::class)->orderBy('name');
     }
 
+    public function statuses(): HasMany
+    {
+        return $this->hasMany(Status::class)->orderBy('position');
+    }
+
+    public function transitions(): HasMany
+    {
+        return $this->hasMany(Transition::class);
+    }
+
+    /**
+     * New projects start with the standard trio and an open workflow
+     * (wildcard transition into every status) — restricting is opt-in.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Project $project) {
+            $project->seedDefaultWorkflow();
+        });
+    }
+
+    public function seedDefaultWorkflow(): void
+    {
+        if ($this->statuses()->exists()) {
+            return;
+        }
+
+        $defaults = [
+            ['name' => 'To Do', 'category' => 'todo', 'position' => 0, 'is_default' => true],
+            ['name' => 'In Progress', 'category' => 'in_progress', 'position' => 1, 'is_default' => false],
+            ['name' => 'Done', 'category' => 'done', 'position' => 2, 'is_default' => false],
+        ];
+
+        foreach ($defaults as $attributes) {
+            $status = $this->statuses()->create($attributes);
+            $this->transitions()->create(['from_status_id' => null, 'to_status_id' => $status->id]);
+        }
+    }
+
+    /**
+     * The user's effective role in this project (personal projects: lead
+     * acts as owner).
+     */
+    public function userRole(User $user): ?string
+    {
+        if (! $this->team_id) {
+            return $this->lead_user_id === $user->id ? 'owner' : null;
+        }
+
+        return $this->team->getUserRole($user);
+    }
+
+    public function allowsTransition(?int $fromStatusId, int $toStatusId, ?string $role): bool
+    {
+        return $this->transitions()
+            ->where('to_status_id', $toStatusId)
+            ->where(function ($q) use ($fromStatusId) {
+                $q->whereNull('from_status_id');
+                if ($fromStatusId) {
+                    $q->orWhere('from_status_id', $fromStatusId);
+                }
+            })
+            ->get()
+            ->contains(fn (Transition $t) => $t->roleAllowed($role));
+    }
+
+    /**
+     * Transitions the given role may take from a status (wildcards included).
+     */
+    public function availableTransitionsFor(?int $fromStatusId, ?string $role)
+    {
+        return $this->transitions()
+            ->with('toStatus')
+            ->where(function ($q) use ($fromStatusId) {
+                $q->whereNull('from_status_id');
+                if ($fromStatusId) {
+                    $q->orWhere('from_status_id', $fromStatusId);
+                }
+            })
+            ->get()
+            ->filter(fn (Transition $t) => $t->roleAllowed($role) && $t->to_status_id !== $fromStatusId)
+            ->unique('to_status_id')
+            ->values();
+    }
+
     /**
      * Reserve and return the next issue key (e.g. "TF-42").
      *
