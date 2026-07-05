@@ -41,10 +41,17 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
                 return new \Illuminate\Http\JsonResponse(['message' => 'Not found.'], 404);
             }
-            $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+            // HTTP exceptions carry intentional, client-safe messages
+            if ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) {
+                return new \Illuminate\Http\JsonResponse([
+                    'message' => $e->getMessage() ?: 'Error',
+                ], $e->getStatusCode());
+            }
 
+            // Unexpected exceptions (QueryException etc.) embed SQL, bindings and
+            // connection details in their message — never expose those to clients.
             return new \Illuminate\Http\JsonResponse([
-                'message' => $e->getMessage() ?: 'Server Error',
-            ], $status);
+                'message' => config('app.debug') ? $e->getMessage() : 'Server Error',
+            ], 500);
         });
     })->create();
