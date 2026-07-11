@@ -16,7 +16,10 @@ return new class extends Migration
             // Jira-style status category — drives board grouping and reports
             $table->string('category', 20)->default('todo'); // todo | in_progress | done
             $table->unsignedInteger('position')->default(0);
-            $table->boolean('is_default')->default(false);
+            // smallInteger, not boolean: PgBouncer + ATTR_EMULATE_PREPARES
+            // interpolates PHP bools as 0/1 integers, which Postgres rejects
+            // for real boolean columns. Model casts it back to bool.
+            $table->smallInteger('is_default')->default(0);
             $table->timestamps();
 
             $table->index(['project_id', 'position']);

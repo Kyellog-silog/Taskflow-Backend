@@ -34,7 +34,7 @@ return new class extends Migration
                         'name' => trim($column->name) ?: 'To Do',
                         'category' => $this->guessCategory($column->name),
                         'position' => $position++,
-                        'is_default' => false,
+                        'is_default' => 0,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -53,7 +53,7 @@ return new class extends Migration
                         'name' => $name,
                         'category' => $category,
                         'position' => $i,
-                        'is_default' => false,
+                        'is_default' => 0,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -67,7 +67,7 @@ return new class extends Migration
                 ->orderBy('position')
                 ->value('id');
             if ($defaultId) {
-                DB::table('statuses')->where('id', $defaultId)->update(['is_default' => true]);
+                DB::table('statuses')->where('id', $defaultId)->update(['is_default' => 1]);
             }
 
             // Tasks inherit their column's status
